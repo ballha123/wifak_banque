@@ -24,12 +24,14 @@ import {
   Download,
   Loader2,
   Presentation,
+  Scale,
+  AlertCircle,
+  Info,
 } from "lucide-react";
 
 /**
  * APPLICATION DE PRÉSENTATION WIFAK BANK
- * Correction : Utilisation d'un chargement plus robuste des bibliothèques via CDN.
- * On utilise html-to-image pour éviter l'erreur de couleur "lab".
+ * Mise à jour selon Note d'Organisation 2026/0001
  */
 export default function App() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -40,17 +42,15 @@ export default function App() {
 
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Définition des slides
   const slides = [
     { id: 0, title: "Introduction", type: "intro" },
     { id: 1, title: "1. Le Mécanisme IJARA", type: "concept" },
     { id: 2, title: "2. Processus de Règlement", type: "process" },
-    { id: 3, title: "3. Matrice de Délégation", type: "delegation" },
+    { id: 3, title: "3. Matrice de Délégation 2026", type: "delegation" },
     { id: 4, title: "4. Importation LCI", type: "lci" },
     { id: 5, title: "Conclusion", type: "conclusion" },
   ];
 
-  // Chargement des scripts externes
   useEffect(() => {
     const loadScript = (src: string, globalName: string) => {
       return new Promise((resolve) => {
@@ -65,7 +65,6 @@ export default function App() {
     };
 
     const initLibs = async () => {
-      // Chargement séquentiel pour éviter les conflits
       await loadScript(
         "https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js",
         "htmlToImage",
@@ -109,21 +108,10 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat("fr-TN", {
-      style: "currency",
-      currency: "TND",
-    }).format(val);
-
-  // --- EXPORT PDF ---
   const handleDownloadPDF = async () => {
     const h2i = (window as any).htmlToImage;
     const { jsPDF } = (window as any).jspdf || {};
-
-    if (!printRef.current || !h2i || !jsPDF) {
-      alert("Bibliothèques de génération non prêtes. Veuillez patienter.");
-      return;
-    }
+    if (!printRef.current || !h2i || !jsPDF) return;
 
     setIsGenerating(true);
     try {
@@ -135,66 +123,50 @@ export default function App() {
       const slideElements = Array.from(
         printRef.current.children,
       ) as HTMLElement[];
-
       for (let i = 0; i < slideElements.length; i++) {
-        // Capture PNG pour éviter les erreurs de parsing CSS complexes de html2canvas
         const imgData = await h2i.toPng(slideElements[i], {
           width: 960,
           height: 540,
           pixelRatio: 2,
         });
-
         if (i > 0) pdf.addPage("a4", "landscape");
         pdf.addImage(imgData, "PNG", 0, 0, 297, 210);
       }
-      pdf.save("Presentation_Wifak_IJARA.pdf");
+      pdf.save("Wifak_Note_2026_Delegation.pdf");
     } catch (e) {
       console.error(e);
-      alert("Erreur lors de l'exportation PDF.");
     }
     setIsGenerating(false);
   };
 
-  // --- EXPORT POWERPOINT ---
   const handleDownloadPPTX = async () => {
     const h2i = (window as any).htmlToImage;
     const PptxGenJS = (window as any).PptxGenJS;
-
-    if (!printRef.current || !h2i || !PptxGenJS) {
-      alert("Bibliothèques de génération non prêtes. Veuillez patienter.");
-      return;
-    }
+    if (!printRef.current || !h2i || !PptxGenJS) return;
 
     setIsGenerating(true);
     try {
       const pres = new PptxGenJS();
       pres.layout = "LAYOUT_WIDE";
-
       const slideElements = Array.from(
         printRef.current.children,
       ) as HTMLElement[];
-
       for (let i = 0; i < slideElements.length; i++) {
         const imgData = await h2i.toPng(slideElements[i], {
           width: 960,
           height: 540,
           pixelRatio: 2,
         });
-
         const slide = pres.addSlide();
         slide.addImage({ data: imgData, x: 0, y: 0, w: "100%", h: "100%" });
       }
-
-      pres.writeFile({ fileName: "Presentation_Wifak_IJARA.pptx" });
-    } catch (error) {
-      console.error(error);
-      alert("Erreur lors de l'exportation PowerPoint.");
-    } finally {
-      setIsGenerating(false);
+      pres.writeFile({ fileName: "Wifak_Note_2026_Delegation.pptx" });
+    } catch (e) {
+      console.error(e);
     }
+    setIsGenerating(false);
   };
 
-  // --- COMPOSANT DE FOND WIFAK ---
   const WifakBackground = ({
     children,
     title,
@@ -211,12 +183,9 @@ export default function App() {
       scale = Math.min(scaleX, scaleY);
     }
 
-    const baseClasses =
-      "relative overflow-hidden bg-white text-slate-800 flex flex-col shrink-0 border border-slate-100 shadow-2xl transition-all duration-500";
-
     return (
       <div
-        className={`${baseClasses} ${mode === "preview" ? "w-[960px] h-[540px] rounded-xl" : mode === "pdf" ? "w-[960px] h-[540px]" : ""}`}
+        className={`relative overflow-hidden bg-white text-slate-800 flex flex-col shrink-0 border border-slate-100 shadow-2xl transition-all duration-500 ${mode === "preview" ? "w-[960px] h-[540px] rounded-xl" : mode === "pdf" ? "w-[960px] h-[540px]" : ""}`}
         style={
           mode === "fullscreen"
             ? {
@@ -232,7 +201,6 @@ export default function App() {
             : {}
         }
       >
-        {/* Identité Visuelle Wifak */}
         <div
           className="absolute top-0 right-0 w-[40%] h-[60%] bg-[#be1e2d] z-0"
           style={{ clipPath: "polygon(100% 0, 0 0, 100% 100%)" }}
@@ -241,8 +209,6 @@ export default function App() {
           className="absolute bottom-0 right-0 w-[35%] h-[30%] bg-slate-50 z-0"
           style={{ clipPath: "polygon(100% 0, 0% 100%, 100% 100%)" }}
         ></div>
-
-        {/* Logo */}
         <div className="absolute bottom-6 right-8 z-20">
           <img
             src="/logo.png"
@@ -251,20 +217,14 @@ export default function App() {
             onError={(e) => (e.currentTarget.style.display = "none")}
           />
         </div>
-
-        {/* Header Slide */}
         <div className="relative z-20 pt-10 px-16">
           <h2 className="text-4xl font-bold border-b-4 border-[#be1e2d] pb-4 inline-block mb-2 text-[#0e3b6e]">
             {title}
           </h2>
         </div>
-
-        {/* Contenu Slide */}
         <div className="relative z-20 flex-1 px-16 py-4 flex flex-col justify-center overflow-hidden">
           {children}
         </div>
-
-        {/* Footer Slide */}
         <div className="relative z-20 pb-4 px-16 flex justify-between items-end text-slate-400 text-sm font-bold uppercase tracking-tighter">
           <div>Réalisé par : Alaa Smeti</div>
           <div className="mr-56 italic text-[#be1e2d]">www.wifakbank.com</div>
@@ -289,21 +249,29 @@ export default function App() {
                       size={18}
                       className="text-[#0e3b6e] shrink-0 mt-1"
                     />{" "}
-                    <div>Efficacité : Optimisation des flux.</div>
+                    <div>
+                      Efficacité Opérationnelle : Réduction des délais de
+                      traitement (Note NO-2026).
+                    </div>
                   </li>
                   <li className="flex gap-3">
                     <CheckCircle
                       size={18}
                       className="text-[#0e3b6e] shrink-0 mt-1"
                     />{" "}
-                    <div>Sécurité : Contrôles PROLEASE & Sharia.</div>
+                    <div>
+                      Sécurité & Conformité : Digitalisation des contrôles
+                      PROLEASE & Sharia.
+                    </div>
                   </li>
                   <li className="flex gap-3">
                     <CheckCircle
                       size={18}
                       className="text-[#0e3b6e] shrink-0 mt-1"
                     />{" "}
-                    <div>Agilité : Délégation décentralisée.</div>
+                    <div>
+                      Agilité Décisionnelle : Nouvelle matrice décentralisée.
+                    </div>
                   </li>
                 </ul>
               </div>
@@ -314,9 +282,9 @@ export default function App() {
               </h3>
               <div className="space-y-3">
                 {[
-                  "Définition de l'IJARA",
+                  "Le Mécanisme IJARA",
                   "Processus de Règlement",
-                  "Matrice de Délégation",
+                  "Matrice de Délégation 2026",
                   "Importation LCI",
                   "Conclusion",
                 ].map((item, idx) => (
@@ -369,7 +337,7 @@ export default function App() {
                 <div>CLIENT</div>
               </div>
             </div>
-            <div className="mt-8 bg-slate-50 px-6 py-2 rounded-full border border-slate-200 text-xs font-black text-slate-500 uppercase tracking-widest shadow-sm">
+            <div className="mt-8 bg-slate-50 px-6 py-2 rounded-full border border-slate-200 text-xs font-black text-slate-500 uppercase shadow-sm">
               Transfert de propriété en fin de contrat
             </div>
           </div>
@@ -381,33 +349,33 @@ export default function App() {
               {
                 step: "01",
                 title: "Agence",
-                desc: "Collecte Dossier",
+                desc: "Collecte & Scan Dossier",
                 icon: FileText,
               },
               {
                 step: "02",
                 title: "Middle Office",
-                desc: "Contrôle",
+                desc: "Contrôle Exhaustivité",
                 icon: ShieldCheck,
               },
               {
                 step: "03",
                 title: "Trésorerie",
-                desc: "Règlement",
+                desc: "Ordonnancement",
                 icon: LayoutTemplate,
               },
               {
                 step: "04",
                 title: "Validation",
-                desc: "Paiement",
+                desc: "Signature & Paiement",
                 icon: CheckCircle,
               },
             ].map((item, idx) => (
               <div
                 key={idx}
-                className="bg-white border border-slate-200 p-5 rounded-xl shadow-md h-48 flex flex-col justify-between relative hover:border-[#be1e2d] transition-all"
+                className="bg-white border border-slate-200 p-5 rounded-xl shadow-md h-48 flex flex-col justify-between relative hover:border-[#be1e2d] transition-all group"
               >
-                <div className="text-3xl font-bold text-slate-100 absolute top-2 right-4">
+                <div className="text-3xl font-bold text-slate-100 absolute top-2 right-4 group-hover:text-red-50">
                   {item.step}
                 </div>
                 <div className="w-10 h-10 bg-[#be1e2d] rounded-lg flex items-center justify-center mb-2">
@@ -427,44 +395,127 @@ export default function App() {
         );
       case 3:
         return (
-          <div className="h-full flex items-center gap-8 font-bold">
-            <div className="flex-1 space-y-4">
-              <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm">
-                <h3 className="font-bold text-[#0e3b6e] mb-4">
-                  Critères d'Escalade
-                </h3>
-                <ul className="space-y-3 text-slate-600 text-sm">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle size={14} className="text-green-500" /> Montant
-                    du financement
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle size={14} className="text-green-500" /> Classe
-                    de Risque BCT
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle size={14} className="text-green-500" /> Type de
-                    Matériel
-                  </li>
-                </ul>
+          <div className="h-full flex flex-col gap-4 font-bold text-[#0e3b6e]">
+            <div className="grid grid-cols-5 gap-2 text-center text-[10px] uppercase tracking-tighter">
+              <div className="bg-[#0e3b6e] text-white p-2 rounded">
+                Agence (DA)
+              </div>
+              <div className="bg-[#0e3b6e]/80 text-white p-2 rounded">
+                Zone (DZ)
+              </div>
+              <div className="bg-[#0e3b6e]/60 text-white p-2 rounded">
+                Pôle (CPC)
+              </div>
+              <div className="bg-[#be1e2d]/80 text-white p-2 rounded">
+                Risque (CPR)
+              </div>
+              <div className="bg-[#be1e2d] text-white p-2 rounded">
+                Direction (DGA)
               </div>
             </div>
-            <div className="flex-1 flex flex-col-reverse items-center justify-center pt-4">
-              {[
-                "COMITÉ (> 800k)",
-                "DGA (650-800k)",
-                "PÔLE (200-300k)",
-                "ZONE (100-200k)",
-                "AGENCE (< 100k)",
-              ].map((lvl, i) => (
-                <div
-                  key={i}
-                  className="w-full bg-[#0e3b6e] text-white text-[10px] py-2 px-4 rounded mb-1 text-center font-bold transition-all hover:scale-105 hover:bg-[#be1e2d]"
-                  style={{ width: `${100 - i * 8}%` }}
-                >
-                  {lvl}
-                </div>
-              ))}
+
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-lg flex-1">
+              <table className="w-full h-full text-[11px] border-collapse">
+                <thead className="bg-slate-50 text-slate-500 uppercase text-[9px]">
+                  <tr>
+                    <th className="p-2 border-b border-r text-left">
+                      Indicateur (Note 2026)
+                    </th>
+                    <th className="p-2 border-b border-r">DA</th>
+                    <th className="p-2 border-b border-r">DZ</th>
+                    <th className="p-2 border-b border-r">CPC</th>
+                    <th className="p-2 border-b border-r">CPR</th>
+                    <th className="p-2 border-b">DGA</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-700">
+                  <tr className="bg-white hover:bg-slate-50 transition-colors">
+                    <td className="p-2 border-b border-r font-black">
+                      Classe BCT
+                    </td>
+                    <td className="p-2 border-b border-r text-center">0</td>
+                    <td className="p-2 border-b border-r text-center">0</td>
+                    <td className="p-2 border-b border-r text-center">0 - 1</td>
+                    <td className="p-2 border-b border-r text-center">0 - 1</td>
+                    <td className="p-2 border-b text-center">-</td>
+                  </tr>
+                  <tr className="bg-slate-50/30">
+                    <td className="p-2 border-b border-r font-black">
+                      Plafond Dossier
+                    </td>
+                    <td className="p-2 border-b border-r text-center font-bold text-blue-700 text-xs">
+                      100 mD
+                    </td>
+                    <td className="p-2 border-b border-r text-center font-bold text-blue-700 text-xs">
+                      200 mD
+                    </td>
+                    <td className="p-2 border-b border-r text-center font-bold text-blue-700 text-xs">
+                      300 mD
+                    </td>
+                    <td className="p-2 border-b border-r text-center font-bold text-red-700 text-xs">
+                      0.65 MD
+                    </td>
+                    <td className="p-2 border-b text-center font-bold text-red-700 text-xs">
+                      0.8 MD
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border-b border-r font-black">
+                      Premier Loyer
+                    </td>
+                    <td className="p-2 border-b border-r text-center">
+                      20% /( 30% pour agriculteurs)
+                    </td>
+                    <td className="p-2 border-b border-r text-center">10%</td>
+                    <td className="p-2 border-b border-r text-center"></td>
+                    <td className="p-2 border-b border-r text-center"></td>
+                    <td className="p-2 border-b border-r text-center"></td>
+                  </tr>
+                  <tr className="bg-slate-50/30">
+                    <td className="p-2 border-b border-r font-black">
+                      Taux Min / Apport
+                    </td>
+                    <td className="p-2 border-b border-r text-center">
+                      15% / 20%
+                    </td>
+                    <td className="p-2 border-b border-r text-center">
+                      13.5% / 10%
+                    </td>
+                    <td className="p-2 border-b border-r text-center">
+                      12.5% / -
+                    </td>
+                    <td className="p-2 border-b border-r text-center">
+                      11.5% / -
+                    </td>
+                    <td className="p-2 border-b text-center">11% / -</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2 border-r font-black text-[9px]">
+                      Exclusions Réseau
+                    </td>
+                    <td className="p-2 border-r text-[8px] leading-none italic text-slate-400 text-center">
+                      Taxi, Louage, Occasion, Spécifique
+                    </td>
+                    <td className="p-2 border-r text-[8px] leading-none italic text-slate-400 text-center">
+                      Taxi, Louage, Spécifique
+                    </td>
+                    <td className="p-2 border-r text-[8px] leading-none italic text-slate-400 text-center">
+                      Matériel Spécifique
+                    </td>
+                    <td className="p-2 border-r text-[8px] leading-none italic text-slate-400 text-center">
+                      Matériel Spécifique
+                    </td>
+                    <td className="p-2 text-center text-[8px]">-</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="flex gap-2 bg-blue-50 p-2 rounded-lg border border-blue-100 text-[9px] items-center">
+              <Info size={12} className="text-blue-600 shrink-0" />
+              <span>
+                Circuit : CC → DA → Analyste Risque → DZ → CPC → CPR → DGA
+                (Selon seuils)
+              </span>
             </div>
           </div>
         );
@@ -474,7 +525,9 @@ export default function App() {
             <div className="flex justify-between items-center px-4">
               <div className="text-center">
                 <Building2 size={32} className="text-slate-400 mx-auto mb-2" />
-                <div className="font-bold text-xs text-slate-600">Suplier</div>
+                <div className="font-bold text-xs text-slate-600">
+                  Fournisseur
+                </div>
               </div>
               <div className="flex-1 border-t-2 border-dashed border-slate-200 relative mx-4">
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-2 text-[10px] font-bold text-sky-600 uppercase">
@@ -490,7 +543,7 @@ export default function App() {
                 </div>
               </div>
               <div className="flex-1 border-t-2 border-dashed border-slate-200 relative mx-4">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-2 text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-2 text-[10px] font-bold text-emerald-600 uppercase">
                   Dédouanement
                 </div>
               </div>
@@ -515,11 +568,11 @@ export default function App() {
                 Une Banque <span className="text-[#be1e2d]">Agile</span>
               </h1>
               <p className="text-slate-500 mt-2 font-medium italic">
-                Vers le futur digital
+                Accélérer la transformation digitale
               </p>
             </div>
             <div className="grid grid-cols-3 gap-6 w-full px-4 text-center">
-              {["QUALITÉ", "RAPIDITÉ", "CONFIANCE"].map((txt, i) => (
+              {["CONFORMITÉ", "PERFORMANCE", "SÉCURITÉ"].map((txt, i) => (
                 <div
                   key={i}
                   className="bg-white p-5 rounded-xl border border-slate-200 shadow-lg group hover:border-[#be1e2d] transition-all"
@@ -556,7 +609,6 @@ export default function App() {
                 </button>
               ))}
             </div>
-
             <div className="flex gap-3">
               <button
                 onClick={handleDownloadPDF}
@@ -601,14 +653,12 @@ export default function App() {
           <WifakBackground title={slides[currentSlide].title} mode="fullscreen">
             {renderSlideContent(currentSlide)}
           </WifakBackground>
-
           <button
             onClick={() => setIsFullScreen(false)}
             className="absolute top-8 left-8 z-[110] bg-white/90 hover:bg-red-50 text-red-600 p-3.5 rounded-full shadow-2xl border border-red-100 transition-all active:scale-90 shadow-red-200"
           >
             <X size={28} />
           </button>
-
           <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-12 pointer-events-none z-[110]">
             <button
               onClick={(e) => {

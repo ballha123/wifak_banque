@@ -461,8 +461,8 @@ export default function LCIProcessSimulator() {
                         <Coins size={20} className="shrink-0" />
                         <p>
                           Après validation, la Base Locative sur{" "}
-                          <strong>PROLEASE</strong> sera actualisée avec le
-                          montant contre-valeur TND définitif.
+                          <strong>IMALL</strong> sera actualisée avec le montant
+                          contre-valeur TND définitif.
                         </p>
                       </div>
                     </div>
