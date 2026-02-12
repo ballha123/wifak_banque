@@ -23,29 +23,66 @@ import {
   List,
   Download,
   Loader2,
+  Presentation,
 } from "lucide-react";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 
-export default function PresentationGenerator() {
+/**
+ * APLIKASION TI PRESENTASION TI WIFAK BANK
+ * Daytoy ket agus-usar iti 'dom-to-image-more' tapno maliklikan ti error iti 'lab' color function.
+ */
+export default function App() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [libsLoaded, setLibsLoaded] = useState(false);
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
 
   const printRef = useRef<HTMLDivElement>(null);
 
+  // Dagiti slides ti presentasion
   const slides = [
-    { id: 0, title: "Introduction", type: "intro" },
-    { id: 1, title: "1. Définition IJARA", type: "concept" },
-    { id: 2, title: "2. Processus Règlement", type: "process" },
-    { id: 3, title: "3. Matrice Délégation", type: "delegation" },
-    { id: 4, title: "4. Import LCI", type: "lci" },
-    { id: 5, title: "Conclusion", type: "conclusion" },
+    { id: 0, title: "Introduksion", type: "intro" },
+    { id: 1, title: "1. Deskripsion ti IJARA", type: "concept" },
+    { id: 2, title: "2. Proseso ti Panagbayad", type: "process" },
+    { id: 3, title: "3. Matriz ti Delegasion", type: "delegation" },
+    { id: 4, title: "4. Importasion ti LCI", type: "lci" },
+    { id: 5, title: "Konklusion", type: "conclusion" },
   ];
 
-  // Gestion dynamique de la taille de l'écran pour le mode plein écran
+  // Ag-load kadagiti kailangan a biblioteka manipud iti CDN
   useEffect(() => {
+    const loadScript = (src: string) => {
+      return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`))
+          return resolve(true);
+        const script = document.createElement("script");
+        script.src = src;
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    };
+
+    // Agus-usar iti dom-to-image-more tapno nasalsalimetmet ti panag-capture
+    Promise.all([
+      loadScript(
+        "https://cdnjs.cloudflare.com/ajax/libs/dom-to-image-more/2.9.5/dom-to-image-more.min.js",
+      ),
+      loadScript(
+        "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
+      ),
+      loadScript(
+        "https://cdn.jsdelivr.net/gh/gitbrent/PptxGenJS@3.12.0/dist/pptxgen.bundle.js",
+      ),
+    ])
+      .then(() => {
+        setLibsLoaded(true);
+      })
+      .catch((err) => {
+        console.error("Madi ti panag-load dagiti biblioteka", err);
+      });
+
     const handleResize = () => {
       setWindowSize({ width: window.innerWidth, height: window.innerHeight });
     };
@@ -72,56 +109,83 @@ export default function PresentationGenerator() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  // --- CORRECTION GÉNÉRATION PDF ---
-  const handleDownloadPDF = async () => {
-    if (!printRef.current) return;
-    setIsGenerating(true);
+  const formatCurrency = (val: number) =>
+    new Intl.NumberFormat("fr-TN", {
+      style: "currency",
+      currency: "TND",
+    }).format(val);
 
+  // --- PANAG-DOWNLOAD ITI PDF AGUS-USAR ITI DOM-TO-IMAGE ---
+  const handleDownloadPDF = async () => {
+    if (!printRef.current || !libsLoaded) return;
+    setIsGenerating(true);
     try {
-      // Format A4 paysage en mm
+      const domtoimage = (window as any).domtoimage;
+      const { jsPDF } = (window as any).jspdf;
+
       const pdf = new jsPDF({
         orientation: "landscape",
         unit: "mm",
         format: "a4",
       });
+      const slideElements = Array.from(
+        printRef.current.children,
+      ) as HTMLElement[];
+
+      for (let i = 0; i < slideElements.length; i++) {
+        // Pa-picture-an ti slide kas PNG data URL
+        const imgData = await domtoimage.toPng(slideElements[i], {
+          width: 960,
+          height: 540,
+          style: { transform: "scale(1)", left: 0, top: 0 },
+        });
+
+        if (i > 0) pdf.addPage("a4", "landscape");
+        pdf.addImage(imgData, "PNG", 0, 0, 297, 210);
+      }
+      pdf.save("Wifak_IJARA_Presentasion.pdf");
+    } catch (e) {
+      console.error(e);
+      alert("Adda biddut iti panag-aramid iti PDF.");
+    }
+    setIsGenerating(false);
+  };
+
+  // --- PANAG-DOWNLOAD ITI POWERPOINT (PPTX) ---
+  const handleDownloadPPTX = async () => {
+    if (!printRef.current || !libsLoaded) return;
+    setIsGenerating(true);
+
+    try {
+      const domtoimage = (window as any).domtoimage;
+      const PptxGenJS = (window as any).PptxGenJS;
+      const pres = new PptxGenJS();
+      pres.layout = "LAYOUT_WIDE";
 
       const slideElements = Array.from(
         printRef.current.children,
       ) as HTMLElement[];
 
       for (let i = 0; i < slideElements.length; i++) {
-        const slide = slideElements[i];
-
-        // Capture avec paramètres optimisés pour éviter les erreurs
-        const canvas = await html2canvas(slide, {
-          scale: 2, // Bonne qualité
-          useCORS: true, // Crucial pour les images externes/locales
-          allowTaint: true,
-          logging: false,
-          backgroundColor: "#ffffff",
+        const imgData = await domtoimage.toPng(slideElements[i], {
           width: 960,
           height: 540,
         });
 
-        const imgData = canvas.toDataURL("image/png");
-        if (i > 0) pdf.addPage("a4", "landscape");
-
-        // On remplit toute la page A4 (297x210 mm)
-        pdf.addImage(imgData, "PNG", 0, 0, 297, 210);
+        const slide = pres.addSlide();
+        slide.addImage({ data: imgData, x: 0, y: 0, w: "100%", h: "100%" });
       }
 
-      pdf.save("Presentation_Wifak_IJARA.pdf");
+      pres.writeFile({ fileName: "Wifak_IJARA_Presentasion.pptx" });
     } catch (error) {
-      console.error("Erreur PDF détaillée:", error);
-      alert(
-        "Erreur lors de la génération. Vérifiez que /logo.png est accessible.",
-      );
+      console.error(error);
+      alert("Adda biddut iti panag-aramid iti PowerPoint.");
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // --- COMPOSANT DE FOND WIFAK OPTIMISÉ ---
+  // --- DESIGN TI BACKGROUND TI WIFAK ---
   const WifakBackground = ({
     children,
     title,
@@ -131,20 +195,19 @@ export default function PresentationGenerator() {
     title: string;
     mode?: "preview" | "fullscreen" | "pdf";
   }) => {
-    // Calcul automatique du zoom (scale) pour le plein écran
     let scale = 1;
     if (mode === "fullscreen" && windowSize.width > 0) {
       const scaleX = windowSize.width / 960;
       const scaleY = windowSize.height / 540;
-      scale = Math.min(scaleX, scaleY); // On prend le minimum pour ne jamais sortir de l'écran
+      scale = Math.min(scaleX, scaleY);
     }
 
-    const baseStyles =
-      "relative overflow-hidden bg-white text-slate-800 flex flex-col shrink-0 border border-slate-100 shadow-2xl transition-all duration-300";
+    const baseClasses =
+      "relative overflow-hidden bg-white text-slate-800 flex flex-col shrink-0 border border-slate-100 shadow-2xl transition-all duration-500";
 
     return (
       <div
-        className={`${baseStyles} ${mode === "preview" ? "w-[960px] h-[540px] rounded-xl" : mode === "pdf" ? "w-[960px] h-[540px]" : ""}`}
+        className={`${baseClasses} ${mode === "preview" ? "w-[960px] h-[540px] rounded-xl" : mode === "pdf" ? "w-[960px] h-[540px]" : ""}`}
         style={
           mode === "fullscreen"
             ? {
@@ -153,51 +216,50 @@ export default function PresentationGenerator() {
                 position: "fixed",
                 top: "50%",
                 left: "50%",
-                transform: `translate(-50%, -50%) scale(${scale})`, // Centrage absolu avec scale
+                transform: `translate(-50%, -50%) scale(${scale})`,
                 zIndex: 100,
-                boxShadow: "0 0 100px rgba(0,0,0,0.2)",
+                transformOrigin: "center center",
               }
             : {}
         }
       >
-        {/* Forme Rouge (Identité visuelle) */}
+        {/* Kolor Nalabbasit iti Identity ti Banko */}
         <div
           className="absolute top-0 right-0 w-[40%] h-[60%] bg-[#be1e2d] z-0"
           style={{ clipPath: "polygon(100% 0, 0 0, 100% 100%)" }}
         ></div>
-
-        {/* Forme Grise */}
+        {/* Kolor de-Prata a Background */}
         <div
           className="absolute bottom-0 right-0 w-[35%] h-[30%] bg-slate-50 z-0"
           style={{ clipPath: "polygon(100% 0, 0% 100%, 100% 100%)" }}
         ></div>
 
-        {/* LOGO IMAGE (Intégration /logo.png) */}
+        {/* Ti Opisial a Logo */}
         <div className="absolute bottom-6 right-8 z-20">
           <img
             src="/logo.png"
-            alt="Wifak Bank"
-            className="h-14 w-auto object-contain drop-shadow-sm"
+            alt="Wifak"
+            className="h-16 w-auto object-contain drop-shadow-sm"
             onError={(e) => (e.currentTarget.style.display = "none")}
           />
         </div>
 
-        {/* Header Slide */}
+        {/* Paulo ti Slide */}
         <div className="relative z-20 pt-10 px-16">
           <h2 className="text-4xl font-bold border-b-4 border-[#be1e2d] pb-4 inline-block mb-2 text-[#0e3b6e]">
             {title}
           </h2>
         </div>
 
-        {/* Contenu Principal */}
+        {/* Linaon ti Slide */}
         <div className="relative z-20 flex-1 px-16 py-4 flex flex-col justify-center overflow-hidden">
           {children}
         </div>
 
-        {/* Footer */}
-        <div className="relative z-20 pb-4 px-16 flex justify-between items-end text-slate-400 text-sm">
-          <div>Réalisé par : Alaa Smeti</div>
-          <div className="mr-52 font-medium">www.wifakbank.com</div>
+        {/* Baba ti Slide */}
+        <div className="relative z-20 pb-4 px-16 flex justify-between items-end text-slate-400 text-sm font-bold uppercase tracking-tighter">
+          <div>Inaramid ni : Alaa Smeti</div>
+          <div className="mr-56 italic text-[#be1e2d]">www.wifakbank.com</div>
         </div>
       </div>
     );
@@ -211,17 +273,16 @@ export default function PresentationGenerator() {
             <div className="flex-1 space-y-4">
               <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm">
                 <h3 className="text-xl font-bold text-[#be1e2d] mb-4 flex items-center gap-2">
-                  <Target size={24} /> Objectifs Stratégiques
+                  <Target size={24} /> Dagiti Estratehiko a Panggep
                 </h3>
-                <ul className="space-y-4 text-slate-700">
+                <ul className="space-y-4 text-slate-700 font-bold">
                   <li className="flex gap-3">
                     <CheckCircle
                       size={18}
                       className="text-[#0e3b6e] shrink-0 mt-1"
                     />{" "}
                     <div>
-                      <strong>Efficacité :</strong> Optimisation des flux (Note
-                      NO-2026).
+                      Kinalaing: Panangpaimbag kadagiti proseso (Note NO-2026).
                     </div>
                   </li>
                   <li className="flex gap-3">
@@ -229,39 +290,35 @@ export default function PresentationGenerator() {
                       size={18}
                       className="text-[#0e3b6e] shrink-0 mt-1"
                     />{" "}
-                    <div>
-                      <strong>Sécurité :</strong> Contrôles PROLEASE & Sharia.
-                    </div>
+                    <div>Kinatalged: Panangkontrol iti PROLEASE & Sharia.</div>
                   </li>
                   <li className="flex gap-3">
                     <CheckCircle
                       size={18}
                       className="text-[#0e3b6e] shrink-0 mt-1"
                     />{" "}
-                    <div>
-                      <strong>Agilité :</strong> Délégation décentralisée.
-                    </div>
+                    <div>Kinapartak: Panangidelegar kadagiti agngay-at.</div>
                   </li>
                 </ul>
               </div>
             </div>
-            <div className="flex-1 h-full flex flex-col justify-center pl-6 border-l border-slate-100">
+            <div className="flex-1 h-full flex flex-col justify-center pl-6 border-l border-slate-100 font-bold">
               <h3 className="text-xl font-bold text-[#0e3b6e] mb-6 flex items-center gap-2">
-                <List size={24} /> Ordre du Jour
+                <List size={24} /> Listaan ti Maaramid
               </h3>
               <div className="space-y-3">
                 {[
-                  "Définition IJARA",
-                  "Processus & Workflow",
-                  "Matrice Délégation",
-                  "Importation LCI",
-                  "Conclusion",
+                  "Deskripsion ti IJARA",
+                  "Proseso ti Panagbayad",
+                  "Matriz ti Delegasion",
+                  "Importasion ti LCI",
+                  "Konklusion",
                 ].map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-4 group">
-                    <div className="w-8 h-8 rounded-full bg-[#0e3b6e] text-white flex items-center justify-center text-xs font-bold group-hover:bg-[#be1e2d] transition-colors">
+                  <div key={idx} className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-full bg-[#0e3b6e] text-white flex items-center justify-center text-xs font-bold">
                       {idx + 1}
                     </div>
-                    <div className="bg-slate-50 px-4 py-2 rounded-lg w-full text-sm font-medium border border-slate-100 shadow-sm">
+                    <div className="bg-slate-50 px-4 py-2 rounded-lg w-full text-sm border border-slate-100 shadow-sm">
                       {item}
                     </div>
                   </div>
@@ -272,21 +329,19 @@ export default function PresentationGenerator() {
         );
       case 1:
         return (
-          <div className="h-full flex flex-col justify-center items-center">
+          <div className="h-full flex flex-col justify-center items-center font-bold text-[#0e3b6e]">
             <div className="flex items-center gap-12 w-full justify-center">
               <div className="flex flex-col items-center gap-2">
                 <div className="w-24 h-24 bg-[#0e3b6e]/5 rounded-full flex items-center justify-center border-2 border-[#0e3b6e]/20">
-                  <Building2 size={40} className="text-[#0e3b6e]" />
+                  <Building2 size={40} />
                 </div>
-                <div className="text-center font-bold text-[#0e3b6e]">
-                  WIFAK BANK
-                </div>
+                <div>WIFAK BANK</div>
               </div>
-              <div className="flex flex-col gap-6 relative w-48">
+              <div className="flex flex-col gap-6 relative w-48 text-center">
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-[2px] bg-slate-200"></div>
-                  <div className="bg-[#be1e2d] text-white px-2 py-0.5 rounded text-[10px] font-bold">
-                    ACHAT
+                  <div className="bg-[#be1e2d] text-white px-2 py-0.5 rounded text-[10px]">
+                    GATANG
                   </div>
                   <div className="flex-1 h-[2px] bg-slate-200"></div>
                 </div>
@@ -295,63 +350,61 @@ export default function PresentationGenerator() {
                 </div>
                 <div className="flex items-center gap-2 flex-row-reverse">
                   <div className="flex-1 h-[2px] bg-slate-200"></div>
-                  <div className="bg-sky-600 text-white px-2 py-0.5 rounded text-[10px] font-bold">
-                    LOYERS
+                  <div className="bg-sky-600 text-white px-2 py-0.5 rounded text-[10px]">
+                    RENTA
                   </div>
                   <div className="flex-1 h-[2px] bg-slate-200"></div>
                 </div>
               </div>
-              <div className="flex flex-col items-center gap-2">
+              <div className="flex flex-col items-center gap-2 text-slate-700">
                 <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center border-2 border-slate-200">
-                  <User size={40} className="text-slate-600" />
+                  <User size={40} />
                 </div>
-                <div className="text-center font-bold text-slate-700">
-                  CLIENT
-                </div>
+                <div>KLIENTE</div>
               </div>
             </div>
-            <div className="mt-8 bg-slate-50 px-6 py-2 rounded-full border border-slate-200 text-xs font-bold text-slate-500 shadow-sm">
-              Transfert de propriété en fin de contrat
+            <div className="mt-8 bg-slate-50 px-6 py-2 rounded-full border border-slate-200 text-xs font-black text-slate-500 uppercase tracking-widest shadow-sm">
+              Pannakaiyakar ti tagikua iti panagngudo ti kontrata
             </div>
           </div>
         );
       case 2:
         return (
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-4 gap-4 font-bold">
             {[
               {
                 step: "01",
-                title: "Agence",
-                desc: "Collecte Dossier",
+                title: "Ahensia",
+                desc: "Panag-urnong ti Dossier",
                 icon: FileText,
               },
               {
                 step: "02",
                 title: "Middle Office",
-                desc: "Contrôle",
+                desc: "Panangkontrol",
                 icon: ShieldCheck,
               },
               {
                 step: "03",
-                title: "Trésorerie",
-                desc: "Décaissement",
+                title: "Tesorería",
+                desc: "Panagbayad",
                 icon: LayoutTemplate,
               },
               {
                 step: "04",
-                title: "Validation",
-                desc: "Paiement",
+                title: "Validasion",
+                desc: "Panag-pirma",
                 icon: CheckCircle,
               },
             ].map((item, idx) => (
               <div
                 key={idx}
-                className="bg-white border border-slate-200 p-5 rounded-xl shadow-md h-48 flex flex-col justify-between relative hover:border-[#be1e2d] transition-all group"
+                className="bg-white border border-slate-200 p-5 rounded-xl shadow-md h-48 flex flex-col justify-between relative hover:border-[#be1e2d] transition-all"
               >
-                <div className="text-3xl font-bold text-slate-100 absolute top-2 right-4 group-hover:text-red-50">
+                <div className="text-3xl font-bold text-slate-100 absolute top-2 right-4">
                   {item.step}
                 </div>
-                <div className="w-10 h-10 bg-[#be1e2d] rounded-lg flex items-center justify-center mb-2 shadow-sm">
+                <div className="w-10 h-10 bg-[#be1e2d] rounded-lg flex items-center justify-center mb-2">
                   <item.icon className="text-white" size={20} />
                 </div>
                 <div>
@@ -368,24 +421,24 @@ export default function PresentationGenerator() {
         );
       case 3:
         return (
-          <div className="h-full flex items-center gap-8">
+          <div className="h-full flex items-center gap-8 font-bold">
             <div className="flex-1 space-y-4">
               <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm">
                 <h3 className="font-bold text-[#0e3b6e] mb-4">
-                  Critères d'Escalade
+                  Dagiti Pagbatayan ti Escalade
                 </h3>
                 <ul className="space-y-3 text-slate-600 text-sm">
                   <li className="flex items-center gap-2">
-                    <CheckCircle size={14} className="text-green-500" /> Montant
-                    (Note 2026)
+                    <CheckCircle size={14} className="text-green-500" />{" "}
+                    Kantidad ti kuarta
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle size={14} className="text-green-500" /> Classe
-                    BCT (0, 1, 2)
+                    <CheckCircle size={14} className="text-green-500" /> Klase
+                    ti BCT (0, 1, 2)
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle size={14} className="text-green-500" /> Type de
-                    Matériel
+                    <CheckCircle size={14} className="text-green-500" /> Klase
+                    ti Material
                   </li>
                 </ul>
               </div>
@@ -400,7 +453,7 @@ export default function PresentationGenerator() {
               ].map((lvl, i) => (
                 <div
                   key={i}
-                  className="w-full bg-[#0e3b6e] text-white text-[10px] py-2 px-4 rounded mb-1 text-center font-bold opacity-90 transition-all hover:scale-105 hover:bg-[#be1e2d]"
+                  className="w-full bg-[#0e3b6e] text-white text-[10px] py-2 px-4 rounded mb-1 text-center font-bold transition-all hover:scale-105 hover:bg-[#be1e2d]"
                   style={{ width: `${100 - i * 8}%` }}
                 >
                   {lvl}
@@ -411,35 +464,33 @@ export default function PresentationGenerator() {
         );
       case 4:
         return (
-          <div className="h-full flex flex-col justify-center">
+          <div className="h-full flex flex-col justify-center font-bold">
             <div className="flex justify-between items-center px-4">
               <div className="text-center">
                 <Building2 size={32} className="text-slate-400 mx-auto mb-2" />
-                <div className="font-bold text-xs text-slate-600">
-                  Fournisseur
-                </div>
+                <div className="font-bold text-xs text-slate-600">Suplier</div>
               </div>
               <div className="flex-1 border-t-2 border-dashed border-slate-200 relative mx-4">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-2 text-[10px] font-bold text-sky-600">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-2 text-[10px] font-bold text-sky-600 uppercase">
                   CIF / FOB
                 </div>
               </div>
               <div className="text-center group">
-                <div className="w-24 h-24 bg-sky-600 rounded-full flex items-center justify-center shadow-lg mx-auto mb-2 border-4 border-white group-hover:bg-[#0e3b6e] transition-colors">
+                <div className="w-24 h-24 bg-sky-600 rounded-full flex items-center justify-center shadow-lg mx-auto mb-2 border-4 border-white">
                   <Globe size={40} className="text-white animate-pulse" />
                 </div>
-                <div className="font-bold text-xs text-sky-700">
-                  WIFAK TRADE
+                <div className="font-bold text-xs text-sky-700 uppercase">
+                  Wifak Trade
                 </div>
               </div>
               <div className="flex-1 border-t-2 border-dashed border-slate-200 relative mx-4">
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-2 text-[10px] font-bold text-emerald-600 uppercase">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-2 text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
                   Dédouanement
                 </div>
               </div>
               <div className="text-center">
                 <User size={32} className="text-slate-400 mx-auto mb-2" />
-                <div className="font-bold text-xs text-slate-600">Client</div>
+                <div className="font-bold text-xs text-slate-600">Kliente</div>
               </div>
             </div>
             <div className="mt-8 mx-auto w-1/2 bg-slate-900 rounded-lg p-3 font-mono text-[10px] text-green-400 shadow-2xl border border-slate-700">
@@ -451,20 +502,20 @@ export default function PresentationGenerator() {
         );
       case 5:
         return (
-          <div className="h-full flex flex-col items-center justify-center">
+          <div className="h-full flex flex-col items-center justify-center font-bold">
             <div className="text-center mb-8">
               <h1 className="text-4xl font-bold text-[#0e3b6e]">
-                Une Banque <span className="text-[#be1e2d]">Agile</span>
+                Banko nga <span className="text-[#be1e2d]">Agile</span>
               </h1>
-              <p className="text-slate-500 mt-2 font-medium">
-                Partenaire de votre réussite
+              <p className="text-slate-500 mt-2 font-medium italic">
+                Pasalog iti digital a pannakabaliw
               </p>
             </div>
-            <div className="grid grid-cols-3 gap-6 w-full">
-              {["CONFORME", "PERFORMANT", "SÉCURISÉ"].map((txt, i) => (
+            <div className="grid grid-cols-3 gap-6 w-full px-4 text-center">
+              {["KINALAING", "KINAPARTAK", "KINATALGED"].map((txt, i) => (
                 <div
                   key={i}
-                  className="bg-white p-5 rounded-xl border border-slate-200 shadow-lg text-center group hover:border-[#be1e2d] transition-all"
+                  className="bg-white p-5 rounded-xl border border-slate-200 shadow-lg group hover:border-[#be1e2d] transition-all"
                 >
                   <div className="w-14 h-14 mx-auto bg-[#0e3b6e]/5 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                     <CheckCircle size={28} className="text-[#0e3b6e]" />
@@ -484,11 +535,11 @@ export default function PresentationGenerator() {
 
   return (
     <div className="font-sans bg-white text-slate-900 flex flex-col items-center justify-center min-h-screen transition-colors duration-300">
-      {/* Contrôles Navigation & Action */}
+      {/* Listaan dagiti Kontrol */}
       {!isFullScreen && (
         <div className="fixed top-20 w-full z-40 px-4 pointer-events-none">
           <div className="max-w-5xl mx-auto flex justify-between items-center pointer-events-auto bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-2xl">
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
               {slides.map((slide, idx) => (
                 <button
                   key={idx}
@@ -503,8 +554,8 @@ export default function PresentationGenerator() {
             <div className="flex gap-3">
               <button
                 onClick={handleDownloadPDF}
-                disabled={isGenerating}
-                className={`flex items-center gap-2 px-5 py-2.5 bg-white text-slate-700 rounded-xl font-bold text-xs hover:bg-slate-50 transition-all border border-slate-200 shadow-sm ${isGenerating ? "opacity-50 cursor-wait" : ""}`}
+                disabled={isGenerating || !libsLoaded}
+                className={`flex items-center gap-2 px-5 py-2.5 bg-white text-slate-700 rounded-xl font-bold text-xs hover:bg-slate-50 border border-slate-200 shadow-sm ${isGenerating || !libsLoaded ? "opacity-50 cursor-wait" : ""}`}
               >
                 {isGenerating ? (
                   <Loader2 size={16} className="animate-spin" />
@@ -514,17 +565,24 @@ export default function PresentationGenerator() {
                 PDF
               </button>
               <button
-                onClick={() => setIsFullScreen(true)}
-                className="flex items-center gap-2 px-6 py-2.5 bg-[#be1e2d] text-white rounded-xl font-bold text-xs hover:bg-red-700 transition-all shadow-xl hover:shadow-red-200 active:scale-95"
+                onClick={handleDownloadPPTX}
+                disabled={isGenerating || !libsLoaded}
+                className={`flex items-center gap-2 px-5 py-2.5 bg-[#0e3b6e] text-white rounded-xl font-bold text-xs hover:bg-[#0e3b6e]/90 shadow-md ${isGenerating || !libsLoaded ? "opacity-50 cursor-wait" : ""}`}
               >
-                <Maximize2 size={16} /> Lancer
+                <Presentation size={16} /> PPTX
+              </button>
+              <button
+                onClick={() => setIsFullScreen(true)}
+                className="flex items-center gap-2 px-6 py-2.5 bg-[#be1e2d] text-white rounded-xl font-bold text-xs hover:bg-red-700 transition-all shadow-xl"
+              >
+                <Maximize2 size={16} /> Irugi
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODE NORMAL: Aperçu */}
+      {/* NORMAL NGA ITSURA */}
       {!isFullScreen && (
         <div className="mt-28 animate-in fade-in zoom-in duration-500">
           <WifakBackground title={slides[currentSlide].title} mode="preview">
@@ -533,14 +591,13 @@ export default function PresentationGenerator() {
         </div>
       )}
 
-      {/* MODE PLEIN ÉCRAN: Immersif (Autonome et proportionné) */}
+      {/* FULLSCREEN NGA ITSURA */}
       {isFullScreen && (
         <div className="fixed inset-0 z-[100] bg-white flex items-center justify-center overflow-hidden">
           <WifakBackground title={slides[currentSlide].title} mode="fullscreen">
             {renderSlideContent(currentSlide)}
           </WifakBackground>
 
-          {/* Bouton Fermer */}
           <button
             onClick={() => setIsFullScreen(false)}
             className="absolute top-8 left-8 z-[110] bg-white/90 hover:bg-red-50 text-red-600 p-3.5 rounded-full shadow-2xl border border-red-100 transition-all active:scale-90"
@@ -548,14 +605,13 @@ export default function PresentationGenerator() {
             <X size={28} />
           </button>
 
-          {/* Navigation Flottante */}
           <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-12 pointer-events-none z-[110]">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setCurrentSlide((prev) => Math.max(prev - 1, 0));
               }}
-              className={`pointer-events-auto p-5 rounded-full bg-white/80 hover:bg-[#be1e2d] hover:text-white text-[#0e3b6e] transition-all shadow-2xl backdrop-blur-md border border-slate-100 ${currentSlide === 0 ? "opacity-0" : "opacity-100"}`}
+              className={`pointer-events-auto p-5 rounded-full bg-white/80 hover:bg-[#be1e2d] hover:text-white text-[#0e3b6e] transition-all shadow-2xl backdrop-blur-md border border-slate-100 ${currentSlide === 0 ? "opacity-0 pointer-events-none" : "opacity-100"}`}
             >
               <ChevronLeft size={44} />
             </button>
@@ -574,13 +630,13 @@ export default function PresentationGenerator() {
         </div>
       )}
 
-      {/* CONTENEUR CACHÉ POUR PDF (Dimensions strictes 960x540) */}
+      {/* PARA ITI PDF (SAAN NGA MAKITA) */}
       <div
         ref={printRef}
         style={{
           position: "fixed",
           top: 0,
-          left: "-4000px",
+          left: "-3000px",
           width: "960px",
           pointerEvents: "none",
         }}
@@ -596,13 +652,6 @@ export default function PresentationGenerator() {
           </div>
         ))}
       </div>
-
-      {!isFullScreen && (
-        <p className="mt-8 text-slate-400 text-xs font-medium italic animate-pulse">
-          Utilisez les flèches du clavier ou les boutons flottants pour
-          naviguer.
-        </p>
-      )}
     </div>
   );
 }
