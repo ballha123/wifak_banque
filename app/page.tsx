@@ -243,7 +243,7 @@ export default function App() {
                 size={48}
               />
               <h1 className="text-6xl font-black text-[#0e3b6e] mb-4 tracking-tighter">
-                Optimisation des <br />
+                Mecanisme des <br />
                 <span className="text-[#be1e2d]">Flux IJARA</span>
               </h1>
               <div className="h-1 w-32 bg-[#be1e2d] mx-auto mb-6"></div>
