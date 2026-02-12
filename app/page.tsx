@@ -27,12 +27,10 @@ import {
   Scale,
   AlertCircle,
   Info,
+  Sparkles,
+  Layout,
 } from "lucide-react";
 
-/**
- * APPLICATION DE PRÉSENTATION WIFAK BANK
- * Mise à jour selon Note d'Organisation 2026/0001
- */
 export default function App() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -43,12 +41,13 @@ export default function App() {
   const printRef = useRef<HTMLDivElement>(null);
 
   const slides = [
-    { id: 0, title: "Introduction", type: "intro" },
-    { id: 1, title: "1. Le Mécanisme IJARA", type: "concept" },
-    { id: 2, title: "2. Processus de Règlement", type: "process" },
-    { id: 3, title: "3. Matrice de Délégation 2026", type: "delegation" },
-    { id: 4, title: "4. Importation LCI", type: "lci" },
-    { id: 5, title: "Conclusion", type: "conclusion" },
+    { id: 0, title: "Cadre Opérationnel IJARA", type: "title" },
+    { id: 1, title: "Introduction", type: "intro" },
+    { id: 2, title: "1. Le Mécanisme IJARA", type: "concept" },
+    { id: 3, title: "2. Processus de Règlement", type: "process" },
+    { id: 4, title: "3. Matrice de Délégation 2026", type: "delegation" },
+    { id: 5, title: "4. Importation LCI", type: "lci" },
+    { id: 6, title: "Conclusion", type: "conclusion" },
   ];
 
   useEffect(() => {
@@ -132,7 +131,7 @@ export default function App() {
         if (i > 0) pdf.addPage("a4", "landscape");
         pdf.addImage(imgData, "PNG", 0, 0, 297, 210);
       }
-      pdf.save("Wifak_Note_2026_Delegation.pdf");
+      pdf.save("Wifak_Note_2026_IJARA.pdf");
     } catch (e) {
       console.error(e);
     }
@@ -160,7 +159,7 @@ export default function App() {
         const slide = pres.addSlide();
         slide.addImage({ data: imgData, x: 0, y: 0, w: "100%", h: "100%" });
       }
-      pres.writeFile({ fileName: "Wifak_Note_2026_Delegation.pptx" });
+      pres.writeFile({ fileName: "Wifak_Note_2026_IJARA.pptx" });
     } catch (e) {
       console.error(e);
     }
@@ -235,7 +234,40 @@ export default function App() {
 
   const renderSlideContent = (index: number) => {
     switch (index) {
-      case 0:
+      case 0: // SLIDE DE TITRE
+        return (
+          <div className="h-full flex flex-col justify-center items-center text-center space-y-6">
+            <div className="bg-[#0e3b6e]/5 p-8 rounded-3xl border-2 border-[#0e3b6e]/10 shadow-inner relative overflow-hidden">
+              <Sparkles
+                className="absolute top-4 right-4 text-[#be1e2d]/20"
+                size={48}
+              />
+              <h1 className="text-6xl font-black text-[#0e3b6e] mb-4 tracking-tighter">
+                Optimisation des <br />
+                <span className="text-[#be1e2d]">Flux IJARA</span>
+              </h1>
+              <div className="h-1 w-32 bg-[#be1e2d] mx-auto mb-6"></div>
+              <p className="text-2xl font-bold text-slate-600">
+                Note d'Organisation 2026/0001 - V1.0
+              </p>
+              <div className="mt-8 flex justify-center gap-4">
+                <div className="bg-white px-6 py-2 rounded-full border border-slate-200 shadow-sm flex items-center gap-2">
+                  <Layout className="text-[#be1e2d]" size={20} />
+                  <span className="text-sm font-bold text-slate-500 uppercase">
+                    Gouvernance Opérationnelle
+                  </span>
+                </div>
+                <div className="bg-white px-6 py-2 rounded-full border border-slate-200 shadow-sm flex items-center gap-2">
+                  <ShieldCheck className="text-[#0e3b6e]" size={20} />
+                  <span className="text-sm font-bold text-slate-500 uppercase">
+                    Maîtrise des Engagements
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      case 1:
         return (
           <div className="h-full flex gap-8 items-center">
             <div className="flex-1 space-y-4">
@@ -260,8 +292,8 @@ export default function App() {
                       className="text-[#0e3b6e] shrink-0 mt-1"
                     />{" "}
                     <div>
-                      Sécurité & Conformité : Digitalisation des contrôles
-                      PROLEASE & Sharia.
+                      Sécurité & Conformité : Maîtrise des risques et respect
+                      des normes Sharia.
                     </div>
                   </li>
                   <li className="flex gap-3">
@@ -280,7 +312,7 @@ export default function App() {
               <h3 className="text-xl font-bold text-[#0e3b6e] mb-6 flex items-center gap-2">
                 <List size={24} /> Ordre du Jour
               </h3>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {[
                   "Le Mécanisme IJARA",
                   "Processus de Règlement",
@@ -301,7 +333,7 @@ export default function App() {
             </div>
           </div>
         );
-      case 1:
+      case 2:
         return (
           <div className="h-full flex flex-col justify-center items-center font-bold text-[#0e3b6e]">
             <div className="flex items-center gap-12 w-full justify-center">
@@ -342,7 +374,7 @@ export default function App() {
             </div>
           </div>
         );
-      case 2:
+      case 3:
         return (
           <div className="grid grid-cols-4 gap-4 font-bold">
             {[
@@ -393,9 +425,9 @@ export default function App() {
             ))}
           </div>
         );
-      case 3:
+      case 4:
         return (
-          <div className="h-full flex flex-col gap-4 font-bold text-[#0e3b6e]">
+          <div className="h-full flex flex-col gap-2 font-bold text-[#0e3b6e]">
             <div className="grid grid-cols-5 gap-2 text-center text-[10px] uppercase tracking-tighter">
               <div className="bg-[#0e3b6e] text-white p-2 rounded">
                 Agence (DA)
@@ -418,8 +450,8 @@ export default function App() {
               <table className="w-full h-full text-[11px] border-collapse">
                 <thead className="bg-slate-50 text-slate-500 uppercase text-[9px]">
                   <tr>
-                    <th className="p-2 border-b border-r text-left">
-                      Indicateur (Note 2026)
+                    <th className="p-2 border-b border-r text-left italic">
+                      Indicateur Note 2026
                     </th>
                     <th className="p-2 border-b border-r">DA</th>
                     <th className="p-2 border-b border-r">DZ</th>
@@ -430,82 +462,86 @@ export default function App() {
                 </thead>
                 <tbody className="text-slate-700">
                   <tr className="bg-white hover:bg-slate-50 transition-colors">
-                    <td className="p-2 border-b border-r font-black">
+                    <td className="p-1.5 border-b border-r font-black">
                       Classe BCT
                     </td>
-                    <td className="p-2 border-b border-r text-center">0</td>
-                    <td className="p-2 border-b border-r text-center">0</td>
-                    <td className="p-2 border-b border-r text-center">0 - 1</td>
-                    <td className="p-2 border-b border-r text-center">0 - 1</td>
-                    <td className="p-2 border-b text-center">-</td>
+                    <td className="p-1.5 border-b border-r text-center">0</td>
+                    <td className="p-1.5 border-b border-r text-center">0</td>
+                    <td className="p-1.5 border-b border-r text-center">
+                      0 - 1
+                    </td>
+                    <td className="p-1.5 border-b border-r text-center">
+                      0 - 1
+                    </td>
+                    <td className="p-1.5 border-b text-center">-</td>
                   </tr>
                   <tr className="bg-slate-50/30">
-                    <td className="p-2 border-b border-r font-black">
+                    <td className="p-1.5 border-b border-r font-black">
                       Plafond Dossier
                     </td>
-                    <td className="p-2 border-b border-r text-center font-bold text-blue-700 text-xs">
+                    <td className="p-1.5 border-b border-r text-center font-bold text-blue-700 text-xs">
                       100 mD
                     </td>
-                    <td className="p-2 border-b border-r text-center font-bold text-blue-700 text-xs">
+                    <td className="p-1.5 border-b border-r text-center font-bold text-blue-700 text-xs">
                       200 mD
                     </td>
-                    <td className="p-2 border-b border-r text-center font-bold text-blue-700 text-xs">
+                    <td className="p-1.5 border-b border-r text-center font-bold text-blue-700 text-xs">
                       300 mD
                     </td>
-                    <td className="p-2 border-b border-r text-center font-bold text-red-700 text-xs">
+                    <td className="p-1.5 border-b border-r text-center font-bold text-red-700 text-xs">
                       0.65 MD
                     </td>
-                    <td className="p-2 border-b text-center font-bold text-red-700 text-xs">
+                    <td className="p-1.5 border-b text-center font-bold text-red-700 text-xs">
                       0.8 MD
                     </td>
                   </tr>
                   <tr>
-                    <td className="p-2 border-b border-r font-black">
+                    <td className="p-1.5 border-b border-r font-black">
                       Premier Loyer
                     </td>
-                    <td className="p-2 border-b border-r text-center">
-                      20% /( 30% pour agriculteurs)
+                    <td className="p-1.5 border-b border-r text-center">
+                      20% (30% agr.)
                     </td>
-                    <td className="p-2 border-b border-r text-center">10%</td>
-                    <td className="p-2 border-b border-r text-center"></td>
-                    <td className="p-2 border-b border-r text-center"></td>
-                    <td className="p-2 border-b border-r text-center"></td>
+                    <td className="p-1.5 border-b border-r text-center">10%</td>
+                    <td className="p-1.5 border-b border-r text-center">-</td>
+                    <td className="p-1.5 border-b border-r text-center">-</td>
+                    <td className="p-1.5 border-b text-center">-</td>
                   </tr>
                   <tr className="bg-slate-50/30">
-                    <td className="p-2 border-b border-r font-black">
+                    <td className="p-1.5 border-b border-r font-black">
                       Taux Min / Apport
                     </td>
-                    <td className="p-2 border-b border-r text-center">
+                    <td className="p-1.5 border-b border-r text-center">
                       15% / 20%
                     </td>
-                    <td className="p-2 border-b border-r text-center">
+                    <td className="p-1.5 border-b border-r text-center">
                       13.5% / 10%
                     </td>
-                    <td className="p-2 border-b border-r text-center">
+                    <td className="p-1.5 border-b border-r text-center">
                       12.5% / -
                     </td>
-                    <td className="p-2 border-b border-r text-center">
+                    <td className="p-1.5 border-b border-r text-center">
                       11.5% / -
                     </td>
-                    <td className="p-2 border-b text-center">11% / -</td>
+                    <td className="p-1.5 border-b text-center">11% / -</td>
                   </tr>
                   <tr>
-                    <td className="p-2 border-r font-black text-[9px]">
-                      Exclusions Réseau
+                    <td className="p-1.5 border-r font-black text-[9px]">
+                      Exclusions
                     </td>
-                    <td className="p-2 border-r text-[8px] leading-none italic text-slate-400 text-center">
-                      Taxi, Louage, Occasion, Spécifique
+                    <td className="p-1.5 border-r text-[8px] leading-none italic text-slate-400 text-center">
+                      Taxi, Occasion, Spécifique
                     </td>
-                    <td className="p-2 border-r text-[8px] leading-none italic text-slate-400 text-center">
-                      Taxi, Louage, Spécifique
+                    <td className="p-1.5 border-r text-[8px] leading-none italic text-slate-400 text-center">
+                      Taxi, Spécifique
                     </td>
-                    <td className="p-2 border-r text-[8px] leading-none italic text-slate-400 text-center">
-                      Matériel Spécifique
+                    <td className="p-1.5 border-r text-[8px] leading-none italic text-slate-400 text-center">
+                      Spécifique
                     </td>
-                    <td className="p-2 border-r text-[8px] leading-none italic text-slate-400 text-center">
-                      Matériel Spécifique
+                    <td className="p-1.5 border-r text-[8px] leading-none italic text-slate-400 text-center">
+                      Spécifique
                     </td>
-                    <td className="p-2 text-center text-[8px]">-</td>
+                    <td className="p-1.5 text-center text-[8px]">-</td>
                   </tr>
                 </tbody>
               </table>
@@ -514,12 +550,11 @@ export default function App() {
               <Info size={12} className="text-blue-600 shrink-0" />
               <span>
                 Circuit : CC → DA → Analyste Risque → DZ → CPC → CPR → DGA
-                (Selon seuils)
               </span>
             </div>
           </div>
         );
-      case 4:
+      case 5:
         return (
           <div className="h-full flex flex-col justify-center font-bold">
             <div className="flex justify-between items-center px-4">
@@ -560,15 +595,16 @@ export default function App() {
             </div>
           </div>
         );
-      case 5:
+      case 6:
         return (
           <div className="h-full flex flex-col items-center justify-center font-bold">
             <div className="text-center mb-8">
               <h1 className="text-4xl font-bold text-[#0e3b6e]">
-                Une Banque <span className="text-[#be1e2d]">Agile</span>
+                Excellence{" "}
+                <span className="text-[#be1e2d]">Opérationnelle</span>
               </h1>
               <p className="text-slate-500 mt-2 font-medium italic">
-                Accélérer la transformation digitale
+                Une vision agile du financement IJARA
               </p>
             </div>
             <div className="grid grid-cols-3 gap-6 w-full px-4 text-center">
@@ -598,14 +634,14 @@ export default function App() {
       {!isFullScreen && (
         <div className="fixed top-20 w-full z-40 px-4 pointer-events-none">
           <div className="max-w-5xl mx-auto flex justify-between items-center pointer-events-auto bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-2xl">
-            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+            <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
               {slides.map((slide, idx) => (
                 <button
                   key={idx}
                   onClick={() => setCurrentSlide(idx)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${currentSlide === idx ? "bg-[#0e3b6e] text-white shadow-lg" : "bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-100"}`}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${currentSlide === idx ? "bg-[#0e3b6e] text-white shadow-lg" : "bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-100"}`}
                 >
-                  {slide.id + 1}
+                  {idx === 0 ? "TITRE" : idx}
                 </button>
               ))}
             </div>
@@ -613,27 +649,27 @@ export default function App() {
               <button
                 onClick={handleDownloadPDF}
                 disabled={isGenerating}
-                className={`flex items-center gap-2 px-5 py-2.5 bg-white text-slate-700 rounded-xl font-bold text-xs hover:bg-slate-50 border border-slate-200 shadow-sm ${isGenerating ? "opacity-50 cursor-wait" : ""}`}
+                className={`flex items-center gap-2 px-4 py-2 bg-white text-slate-700 rounded-xl font-bold text-xs hover:bg-slate-50 border border-slate-200 shadow-sm ${isGenerating ? "opacity-50 cursor-wait" : ""}`}
               >
                 {isGenerating ? (
-                  <Loader2 size={16} className="animate-spin" />
+                  <Loader2 size={14} className="animate-spin" />
                 ) : (
-                  <Download size={16} />
+                  <Download size={14} />
                 )}{" "}
                 PDF
               </button>
               <button
                 onClick={handleDownloadPPTX}
                 disabled={isGenerating}
-                className={`flex items-center gap-2 px-5 py-2.5 bg-[#0e3b6e] text-white rounded-xl font-bold text-xs hover:bg-[#0e3b6e]/90 shadow-md ${isGenerating ? "opacity-50 cursor-wait" : ""}`}
+                className={`flex items-center gap-2 px-4 py-2 bg-[#0e3b6e] text-white rounded-xl font-bold text-xs hover:bg-[#0e3b6e]/90 shadow-md ${isGenerating ? "opacity-50 cursor-wait" : ""}`}
               >
-                <Presentation size={16} /> PPTX
+                <Presentation size={14} /> PPTX
               </button>
               <button
                 onClick={() => setIsFullScreen(true)}
-                className="flex items-center gap-2 px-6 py-2.5 bg-[#be1e2d] text-white rounded-xl font-bold text-xs hover:bg-red-700 transition-all shadow-xl"
+                className="flex items-center gap-2 px-6 py-2 bg-[#be1e2d] text-white rounded-xl font-bold text-xs hover:bg-red-700 transition-all shadow-xl"
               >
-                <Maximize2 size={16} /> Lancer
+                <Maximize2 size={14} /> Lancer
               </button>
             </div>
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, ChangeEvent } from "react";
+import React, { useState } from "react";
 import {
   Building2,
   FileText,
@@ -12,10 +12,8 @@ import {
   UserCheck,
   Calculator,
   RefreshCw,
-  Scan,
   Printer,
   PenTool,
-  Send,
   History,
   ShieldCheck,
   LucideIcon,
@@ -25,8 +23,6 @@ import {
   Hash,
   Truck,
 } from "lucide-react";
-
-// --- TYPES & INTERFACES ---
 
 interface CardProps {
   children: React.ReactNode;
@@ -59,17 +55,15 @@ interface DossierDocuments {
 }
 
 interface DossierState {
-  id: string; // Référence Dossier
-  client: string; // Nom Client
+  id: string;
+  client: string;
   montant: number;
-  typeBien: string; // slug pour règle de gestion (roulant_neuf, etc)
+  typeBien: string;
   fournisseur: string;
   documents: DossierDocuments;
   status: string;
   history: HistoryLog[];
 }
-
-// --- FONCTIONS UTILITAIRES ---
 
 const formatCurrency = (val: number) =>
   new Intl.NumberFormat("fr-TN", {
@@ -77,7 +71,6 @@ const formatCurrency = (val: number) =>
     currency: "TND",
   }).format(val);
 
-// --- COMPOSANTS UI ---
 const Card = ({ children, className = "" }: CardProps) => (
   <div
     className={`bg-white rounded-2xl shadow-xl border border-slate-100 ${className}`}
@@ -169,8 +162,6 @@ export default function IjaraSettlementSimulator() {
   const isFastTrack =
     dossier.typeBien === "roulant_neuf" && dossier.montant < 100000;
 
-  // --- NAVIGATION WORKFLOW ---
-
   const handleNext = () => {
     setLoading(true);
     setTimeout(() => {
@@ -224,7 +215,6 @@ export default function IjaraSettlementSimulator() {
 
   return (
     <div className="min-h-screen bg-white text-slate-800 font-sans p-4 md:p-8">
-      {/* HEADER AVEC BARRE DE PROGRESSION */}
       <div className="max-w-6xl mx-auto mb-10 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-[#be1e2d] rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg">
@@ -304,7 +294,6 @@ export default function IjaraSettlementSimulator() {
                       </h3>
 
                       <div className="grid grid-cols-2 gap-6">
-                        {/* IDENTITÉ CLIENT */}
                         <div className="space-y-1">
                           <label className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
                             <User size={12} /> Nom du Client (Locataire)
@@ -319,8 +308,6 @@ export default function IjaraSettlementSimulator() {
                             placeholder="Ex: SOCIETE EXEMPLE SARL"
                           />
                         </div>
-
-                        {/* RÉFÉRENCE PROLEASE */}
                         <div className="space-y-1">
                           <label className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
                             <Hash size={12} /> Référence Dossier (PROLEASE)
@@ -335,7 +322,6 @@ export default function IjaraSettlementSimulator() {
                           />
                         </div>
 
-                        {/* FOURNISSEUR */}
                         <div className="space-y-1">
                           <label className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
                             <Building2 size={12} /> Fournisseur (Bénéficiaire)
@@ -353,7 +339,6 @@ export default function IjaraSettlementSimulator() {
                           />
                         </div>
 
-                        {/* MONTANT */}
                         <div className="space-y-1">
                           <label className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
                             <Coins size={12} /> Montant à régler (TND TTC)
@@ -371,7 +356,6 @@ export default function IjaraSettlementSimulator() {
                           />
                         </div>
 
-                        {/* TYPE DE BIEN */}
                         <div className="space-y-1 col-span-2">
                           <label className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
                             <Truck size={12} /> Nature du Bien Financé
@@ -563,7 +547,6 @@ export default function IjaraSettlementSimulator() {
                 </div>
               </div>
 
-              {/* NAVIGATION */}
               <div className="mt-12 pt-8 border-t border-slate-50 flex gap-4">
                 <button
                   onClick={handleBack}
@@ -585,7 +568,6 @@ export default function IjaraSettlementSimulator() {
             </Card>
           </div>
 
-          {/* SIDEBAR RÉSUMÉ */}
           <div className="lg:col-span-4 space-y-6 sticky top-24">
             <Card className="p-6 bg-slate-900 text-white overflow-hidden relative shadow-2xl">
               <Building2
