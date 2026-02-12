@@ -27,8 +27,9 @@ import {
 } from "lucide-react";
 
 /**
- * APLIKASION TI PRESENTASION TI WIFAK BANK
- * Daytoy ket agus-usar iti 'dom-to-image-more' tapno maliklikan ti error iti 'lab' color function.
+ * APPLICATION DE PRÉSENTATION WIFAK BANK
+ * Correction : Utilisation d'un chargement plus robuste des bibliothèques via CDN.
+ * On utilise html-to-image pour éviter l'erreur de couleur "lab".
  */
 export default function App() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -39,49 +40,48 @@ export default function App() {
 
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Dagiti slides ti presentasion
+  // Définition des slides
   const slides = [
-    { id: 0, title: "Introduksion", type: "intro" },
-    { id: 1, title: "1. Deskripsion ti IJARA", type: "concept" },
-    { id: 2, title: "2. Proseso ti Panagbayad", type: "process" },
-    { id: 3, title: "3. Matriz ti Delegasion", type: "delegation" },
-    { id: 4, title: "4. Importasion ti LCI", type: "lci" },
-    { id: 5, title: "Konklusion", type: "conclusion" },
+    { id: 0, title: "Introduction", type: "intro" },
+    { id: 1, title: "1. Le Mécanisme IJARA", type: "concept" },
+    { id: 2, title: "2. Processus de Règlement", type: "process" },
+    { id: 3, title: "3. Matrice de Délégation", type: "delegation" },
+    { id: 4, title: "4. Importation LCI", type: "lci" },
+    { id: 5, title: "Conclusion", type: "conclusion" },
   ];
 
-  // Ag-load kadagiti kailangan a biblioteka manipud iti CDN
+  // Chargement des scripts externes
   useEffect(() => {
-    const loadScript = (src: string) => {
-      return new Promise((resolve, reject) => {
-        if (document.querySelector(`script[src="${src}"]`))
-          return resolve(true);
+    const loadScript = (src: string, globalName: string) => {
+      return new Promise((resolve) => {
+        if ((window as any)[globalName]) return resolve(true);
         const script = document.createElement("script");
         script.src = src;
         script.async = true;
-        script.onload = resolve;
-        script.onerror = reject;
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
         document.head.appendChild(script);
       });
     };
 
-    // Agus-usar iti dom-to-image-more tapno nasalsalimetmet ti panag-capture
-    Promise.all([
-      loadScript(
-        "https://cdnjs.cloudflare.com/ajax/libs/dom-to-image-more/2.9.5/dom-to-image-more.min.js",
-      ),
-      loadScript(
+    const initLibs = async () => {
+      // Chargement séquentiel pour éviter les conflits
+      await loadScript(
+        "https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js",
+        "htmlToImage",
+      );
+      await loadScript(
         "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
-      ),
-      loadScript(
+        "jspdf",
+      );
+      await loadScript(
         "https://cdn.jsdelivr.net/gh/gitbrent/PptxGenJS@3.12.0/dist/pptxgen.bundle.js",
-      ),
-    ])
-      .then(() => {
-        setLibsLoaded(true);
-      })
-      .catch((err) => {
-        console.error("Madi ti panag-load dagiti biblioteka", err);
-      });
+        "PptxGenJS",
+      );
+      setLibsLoaded(true);
+    };
+
+    initLibs();
 
     const handleResize = () => {
       setWindowSize({ width: window.innerWidth, height: window.innerHeight });
@@ -115,14 +115,18 @@ export default function App() {
       currency: "TND",
     }).format(val);
 
-  // --- PANAG-DOWNLOAD ITI PDF AGUS-USAR ITI DOM-TO-IMAGE ---
+  // --- EXPORT PDF ---
   const handleDownloadPDF = async () => {
-    if (!printRef.current || !libsLoaded) return;
+    const h2i = (window as any).htmlToImage;
+    const { jsPDF } = (window as any).jspdf || {};
+
+    if (!printRef.current || !h2i || !jsPDF) {
+      alert("Bibliothèques de génération non prêtes. Veuillez patienter.");
+      return;
+    }
+
     setIsGenerating(true);
     try {
-      const domtoimage = (window as any).domtoimage;
-      const { jsPDF } = (window as any).jspdf;
-
       const pdf = new jsPDF({
         orientation: "landscape",
         unit: "mm",
@@ -133,32 +137,36 @@ export default function App() {
       ) as HTMLElement[];
 
       for (let i = 0; i < slideElements.length; i++) {
-        // Pa-picture-an ti slide kas PNG data URL
-        const imgData = await domtoimage.toPng(slideElements[i], {
+        // Capture PNG pour éviter les erreurs de parsing CSS complexes de html2canvas
+        const imgData = await h2i.toPng(slideElements[i], {
           width: 960,
           height: 540,
-          style: { transform: "scale(1)", left: 0, top: 0 },
+          pixelRatio: 2,
         });
 
         if (i > 0) pdf.addPage("a4", "landscape");
         pdf.addImage(imgData, "PNG", 0, 0, 297, 210);
       }
-      pdf.save("Wifak_IJARA_Presentasion.pdf");
+      pdf.save("Presentation_Wifak_IJARA.pdf");
     } catch (e) {
       console.error(e);
-      alert("Adda biddut iti panag-aramid iti PDF.");
+      alert("Erreur lors de l'exportation PDF.");
     }
     setIsGenerating(false);
   };
 
-  // --- PANAG-DOWNLOAD ITI POWERPOINT (PPTX) ---
+  // --- EXPORT POWERPOINT ---
   const handleDownloadPPTX = async () => {
-    if (!printRef.current || !libsLoaded) return;
-    setIsGenerating(true);
+    const h2i = (window as any).htmlToImage;
+    const PptxGenJS = (window as any).PptxGenJS;
 
+    if (!printRef.current || !h2i || !PptxGenJS) {
+      alert("Bibliothèques de génération non prêtes. Veuillez patienter.");
+      return;
+    }
+
+    setIsGenerating(true);
     try {
-      const domtoimage = (window as any).domtoimage;
-      const PptxGenJS = (window as any).PptxGenJS;
       const pres = new PptxGenJS();
       pres.layout = "LAYOUT_WIDE";
 
@@ -167,25 +175,26 @@ export default function App() {
       ) as HTMLElement[];
 
       for (let i = 0; i < slideElements.length; i++) {
-        const imgData = await domtoimage.toPng(slideElements[i], {
+        const imgData = await h2i.toPng(slideElements[i], {
           width: 960,
           height: 540,
+          pixelRatio: 2,
         });
 
         const slide = pres.addSlide();
         slide.addImage({ data: imgData, x: 0, y: 0, w: "100%", h: "100%" });
       }
 
-      pres.writeFile({ fileName: "Wifak_IJARA_Presentasion.pptx" });
+      pres.writeFile({ fileName: "Presentation_Wifak_IJARA.pptx" });
     } catch (error) {
       console.error(error);
-      alert("Adda biddut iti panag-aramid iti PowerPoint.");
+      alert("Erreur lors de l'exportation PowerPoint.");
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // --- DESIGN TI BACKGROUND TI WIFAK ---
+  // --- COMPOSANT DE FOND WIFAK ---
   const WifakBackground = ({
     children,
     title,
@@ -223,18 +232,17 @@ export default function App() {
             : {}
         }
       >
-        {/* Kolor Nalabbasit iti Identity ti Banko */}
+        {/* Identité Visuelle Wifak */}
         <div
           className="absolute top-0 right-0 w-[40%] h-[60%] bg-[#be1e2d] z-0"
           style={{ clipPath: "polygon(100% 0, 0 0, 100% 100%)" }}
         ></div>
-        {/* Kolor de-Prata a Background */}
         <div
           className="absolute bottom-0 right-0 w-[35%] h-[30%] bg-slate-50 z-0"
           style={{ clipPath: "polygon(100% 0, 0% 100%, 100% 100%)" }}
         ></div>
 
-        {/* Ti Opisial a Logo */}
+        {/* Logo */}
         <div className="absolute bottom-6 right-8 z-20">
           <img
             src="/logo.png"
@@ -244,21 +252,21 @@ export default function App() {
           />
         </div>
 
-        {/* Paulo ti Slide */}
+        {/* Header Slide */}
         <div className="relative z-20 pt-10 px-16">
           <h2 className="text-4xl font-bold border-b-4 border-[#be1e2d] pb-4 inline-block mb-2 text-[#0e3b6e]">
             {title}
           </h2>
         </div>
 
-        {/* Linaon ti Slide */}
+        {/* Contenu Slide */}
         <div className="relative z-20 flex-1 px-16 py-4 flex flex-col justify-center overflow-hidden">
           {children}
         </div>
 
-        {/* Baba ti Slide */}
+        {/* Footer Slide */}
         <div className="relative z-20 pb-4 px-16 flex justify-between items-end text-slate-400 text-sm font-bold uppercase tracking-tighter">
-          <div>Inaramid ni : Alaa Smeti</div>
+          <div>Réalisé par : Alaa Smeti</div>
           <div className="mr-56 italic text-[#be1e2d]">www.wifakbank.com</div>
         </div>
       </div>
@@ -273,7 +281,7 @@ export default function App() {
             <div className="flex-1 space-y-4">
               <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm">
                 <h3 className="text-xl font-bold text-[#be1e2d] mb-4 flex items-center gap-2">
-                  <Target size={24} /> Dagiti Estratehiko a Panggep
+                  <Target size={24} /> Objectifs Stratégiques
                 </h3>
                 <ul className="space-y-4 text-slate-700 font-bold">
                   <li className="flex gap-3">
@@ -281,38 +289,36 @@ export default function App() {
                       size={18}
                       className="text-[#0e3b6e] shrink-0 mt-1"
                     />{" "}
-                    <div>
-                      Kinalaing: Panangpaimbag kadagiti proseso (Note NO-2026).
-                    </div>
+                    <div>Efficacité : Optimisation des flux.</div>
                   </li>
                   <li className="flex gap-3">
                     <CheckCircle
                       size={18}
                       className="text-[#0e3b6e] shrink-0 mt-1"
                     />{" "}
-                    <div>Kinatalged: Panangkontrol iti PROLEASE & Sharia.</div>
+                    <div>Sécurité : Contrôles PROLEASE & Sharia.</div>
                   </li>
                   <li className="flex gap-3">
                     <CheckCircle
                       size={18}
                       className="text-[#0e3b6e] shrink-0 mt-1"
                     />{" "}
-                    <div>Kinapartak: Panangidelegar kadagiti agngay-at.</div>
+                    <div>Agilité : Délégation décentralisée.</div>
                   </li>
                 </ul>
               </div>
             </div>
             <div className="flex-1 h-full flex flex-col justify-center pl-6 border-l border-slate-100 font-bold">
               <h3 className="text-xl font-bold text-[#0e3b6e] mb-6 flex items-center gap-2">
-                <List size={24} /> Listaan ti Maaramid
+                <List size={24} /> Ordre du Jour
               </h3>
               <div className="space-y-3">
                 {[
-                  "Deskripsion ti IJARA",
-                  "Proseso ti Panagbayad",
-                  "Matriz ti Delegasion",
-                  "Importasion ti LCI",
-                  "Konklusion",
+                  "Définition de l'IJARA",
+                  "Processus de Règlement",
+                  "Matrice de Délégation",
+                  "Importation LCI",
+                  "Conclusion",
                 ].map((item, idx) => (
                   <div key={idx} className="flex items-center gap-4">
                     <div className="w-8 h-8 rounded-full bg-[#0e3b6e] text-white flex items-center justify-center text-xs font-bold">
@@ -341,7 +347,7 @@ export default function App() {
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-[2px] bg-slate-200"></div>
                   <div className="bg-[#be1e2d] text-white px-2 py-0.5 rounded text-[10px]">
-                    GATANG
+                    ACHAT
                   </div>
                   <div className="flex-1 h-[2px] bg-slate-200"></div>
                 </div>
@@ -351,7 +357,7 @@ export default function App() {
                 <div className="flex items-center gap-2 flex-row-reverse">
                   <div className="flex-1 h-[2px] bg-slate-200"></div>
                   <div className="bg-sky-600 text-white px-2 py-0.5 rounded text-[10px]">
-                    RENTA
+                    LOYER
                   </div>
                   <div className="flex-1 h-[2px] bg-slate-200"></div>
                 </div>
@@ -360,11 +366,11 @@ export default function App() {
                 <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center border-2 border-slate-200">
                   <User size={40} />
                 </div>
-                <div>KLIENTE</div>
+                <div>CLIENT</div>
               </div>
             </div>
             <div className="mt-8 bg-slate-50 px-6 py-2 rounded-full border border-slate-200 text-xs font-black text-slate-500 uppercase tracking-widest shadow-sm">
-              Pannakaiyakar ti tagikua iti panagngudo ti kontrata
+              Transfert de propriété en fin de contrat
             </div>
           </div>
         );
@@ -374,26 +380,26 @@ export default function App() {
             {[
               {
                 step: "01",
-                title: "Ahensia",
-                desc: "Panag-urnong ti Dossier",
+                title: "Agence",
+                desc: "Collecte Dossier",
                 icon: FileText,
               },
               {
                 step: "02",
                 title: "Middle Office",
-                desc: "Panangkontrol",
+                desc: "Contrôle",
                 icon: ShieldCheck,
               },
               {
                 step: "03",
-                title: "Tesorería",
-                desc: "Panagbayad",
+                title: "Trésorerie",
+                desc: "Règlement",
                 icon: LayoutTemplate,
               },
               {
                 step: "04",
-                title: "Validasion",
-                desc: "Panag-pirma",
+                title: "Validation",
+                desc: "Paiement",
                 icon: CheckCircle,
               },
             ].map((item, idx) => (
@@ -425,20 +431,20 @@ export default function App() {
             <div className="flex-1 space-y-4">
               <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm">
                 <h3 className="font-bold text-[#0e3b6e] mb-4">
-                  Dagiti Pagbatayan ti Escalade
+                  Critères d'Escalade
                 </h3>
                 <ul className="space-y-3 text-slate-600 text-sm">
                   <li className="flex items-center gap-2">
-                    <CheckCircle size={14} className="text-green-500" />{" "}
-                    Kantidad ti kuarta
+                    <CheckCircle size={14} className="text-green-500" /> Montant
+                    du financement
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle size={14} className="text-green-500" /> Klase
-                    ti BCT (0, 1, 2)
+                    <CheckCircle size={14} className="text-green-500" /> Classe
+                    de Risque BCT
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle size={14} className="text-green-500" /> Klase
-                    ti Material
+                    <CheckCircle size={14} className="text-green-500" /> Type de
+                    Matériel
                   </li>
                 </ul>
               </div>
@@ -476,7 +482,7 @@ export default function App() {
                 </div>
               </div>
               <div className="text-center group">
-                <div className="w-24 h-24 bg-sky-600 rounded-full flex items-center justify-center shadow-lg mx-auto mb-2 border-4 border-white">
+                <div className="w-24 h-24 bg-sky-600 rounded-full flex items-center justify-center shadow-lg mx-auto mb-2 border-4 border-white group-hover:bg-[#0e3b6e] transition-colors">
                   <Globe size={40} className="text-white animate-pulse" />
                 </div>
                 <div className="font-bold text-xs text-sky-700 uppercase">
@@ -490,13 +496,14 @@ export default function App() {
               </div>
               <div className="text-center">
                 <User size={32} className="text-slate-400 mx-auto mb-2" />
-                <div className="font-bold text-xs text-slate-600">Kliente</div>
+                <div className="font-bold text-xs text-slate-600">Client</div>
               </div>
             </div>
             <div className="mt-8 mx-auto w-1/2 bg-slate-900 rounded-lg p-3 font-mono text-[10px] text-green-400 shadow-2xl border border-slate-700">
-              <p>&gt; SENDING MT700... SUCCESS</p>
+              <p>&gt; CONNEXION PASSERELLE...</p>
+              <p>&gt; ENVOI MT700... SUCCESS</p>
               <p>&gt; REF: LCI-2026-8894</p>
-              <p>&gt; AMOUNT: 250,000.00 EUR</p>
+              <p>&gt; MONTANT: 250,000.00 EUR</p>
             </div>
           </div>
         );
@@ -505,14 +512,14 @@ export default function App() {
           <div className="h-full flex flex-col items-center justify-center font-bold">
             <div className="text-center mb-8">
               <h1 className="text-4xl font-bold text-[#0e3b6e]">
-                Banko nga <span className="text-[#be1e2d]">Agile</span>
+                Une Banque <span className="text-[#be1e2d]">Agile</span>
               </h1>
               <p className="text-slate-500 mt-2 font-medium italic">
-                Pasalog iti digital a pannakabaliw
+                Vers le futur digital
               </p>
             </div>
             <div className="grid grid-cols-3 gap-6 w-full px-4 text-center">
-              {["KINALAING", "KINAPARTAK", "KINATALGED"].map((txt, i) => (
+              {["QUALITÉ", "RAPIDITÉ", "CONFIANCE"].map((txt, i) => (
                 <div
                   key={i}
                   className="bg-white p-5 rounded-xl border border-slate-200 shadow-lg group hover:border-[#be1e2d] transition-all"
@@ -535,7 +542,6 @@ export default function App() {
 
   return (
     <div className="font-sans bg-white text-slate-900 flex flex-col items-center justify-center min-h-screen transition-colors duration-300">
-      {/* Listaan dagiti Kontrol */}
       {!isFullScreen && (
         <div className="fixed top-20 w-full z-40 px-4 pointer-events-none">
           <div className="max-w-5xl mx-auto flex justify-between items-center pointer-events-auto bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-2xl">
@@ -554,8 +560,8 @@ export default function App() {
             <div className="flex gap-3">
               <button
                 onClick={handleDownloadPDF}
-                disabled={isGenerating || !libsLoaded}
-                className={`flex items-center gap-2 px-5 py-2.5 bg-white text-slate-700 rounded-xl font-bold text-xs hover:bg-slate-50 border border-slate-200 shadow-sm ${isGenerating || !libsLoaded ? "opacity-50 cursor-wait" : ""}`}
+                disabled={isGenerating}
+                className={`flex items-center gap-2 px-5 py-2.5 bg-white text-slate-700 rounded-xl font-bold text-xs hover:bg-slate-50 border border-slate-200 shadow-sm ${isGenerating ? "opacity-50 cursor-wait" : ""}`}
               >
                 {isGenerating ? (
                   <Loader2 size={16} className="animate-spin" />
@@ -566,8 +572,8 @@ export default function App() {
               </button>
               <button
                 onClick={handleDownloadPPTX}
-                disabled={isGenerating || !libsLoaded}
-                className={`flex items-center gap-2 px-5 py-2.5 bg-[#0e3b6e] text-white rounded-xl font-bold text-xs hover:bg-[#0e3b6e]/90 shadow-md ${isGenerating || !libsLoaded ? "opacity-50 cursor-wait" : ""}`}
+                disabled={isGenerating}
+                className={`flex items-center gap-2 px-5 py-2.5 bg-[#0e3b6e] text-white rounded-xl font-bold text-xs hover:bg-[#0e3b6e]/90 shadow-md ${isGenerating ? "opacity-50 cursor-wait" : ""}`}
               >
                 <Presentation size={16} /> PPTX
               </button>
@@ -575,14 +581,13 @@ export default function App() {
                 onClick={() => setIsFullScreen(true)}
                 className="flex items-center gap-2 px-6 py-2.5 bg-[#be1e2d] text-white rounded-xl font-bold text-xs hover:bg-red-700 transition-all shadow-xl"
               >
-                <Maximize2 size={16} /> Irugi
+                <Maximize2 size={16} /> Lancer
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* NORMAL NGA ITSURA */}
       {!isFullScreen && (
         <div className="mt-28 animate-in fade-in zoom-in duration-500">
           <WifakBackground title={slides[currentSlide].title} mode="preview">
@@ -591,7 +596,6 @@ export default function App() {
         </div>
       )}
 
-      {/* FULLSCREEN NGA ITSURA */}
       {isFullScreen && (
         <div className="fixed inset-0 z-[100] bg-white flex items-center justify-center overflow-hidden">
           <WifakBackground title={slides[currentSlide].title} mode="fullscreen">
@@ -600,7 +604,7 @@ export default function App() {
 
           <button
             onClick={() => setIsFullScreen(false)}
-            className="absolute top-8 left-8 z-[110] bg-white/90 hover:bg-red-50 text-red-600 p-3.5 rounded-full shadow-2xl border border-red-100 transition-all active:scale-90"
+            className="absolute top-8 left-8 z-[110] bg-white/90 hover:bg-red-50 text-red-600 p-3.5 rounded-full shadow-2xl border border-red-100 transition-all active:scale-90 shadow-red-200"
           >
             <X size={28} />
           </button>
@@ -630,7 +634,6 @@ export default function App() {
         </div>
       )}
 
-      {/* PARA ITI PDF (SAAN NGA MAKITA) */}
       <div
         ref={printRef}
         style={{
